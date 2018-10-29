@@ -1,12 +1,12 @@
-<h1>{{.Title}}</h1>
-<h1>Average {{.Average}}</h1>
-<h1>Variance {{.Variance}}</h1>
+<h1>Current Currency Tracking</h1>
+<h2>{{.Title}}</h2>
 <table>
     <tr>
-        <td>Date</td>
-        <td>Rate</td>
+        <td>From</td>
+        <td>To</td>
     </tr>{{.Data}}
 </table>
+
 <ul>
     <li><a href="/addCurr/form">Add Currency</a></li>
     <li><a href="/dailyEx/form">Input Rate Data</a></li>
@@ -14,5 +14,4 @@
     <li><a href="/sevenDays/form">7-Most Recent Data</a></li>
     <li><a href="/stop/form">Stop Track</a></li>
 </ul>
-
-
+</form>
