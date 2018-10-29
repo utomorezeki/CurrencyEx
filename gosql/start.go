@@ -29,7 +29,12 @@ func main() {
        panic(err)
    }
 
-   _,err = db.Exec("CREATE TABLE Currency ( FromC char(3), ToC char(3) )")
+   _,err = db.Exec("CREATE TABLE Currency ( FromC CHAR(3), ToC CHAR(3) )")
+   if err != nil {
+       panic(err)
+   }
+
+   _,err = db.Exec("CREATE TABLE ExcData ( FromC CHAR(3), ToC CHAR(3), Date VARCHAR(10), Rate FLOAT, PRIMARY KEY (FromC,ToC,date))")
    if err != nil {
        panic(err)
    }
