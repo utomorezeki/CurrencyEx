@@ -186,6 +186,15 @@ func addCurrReactHandler(w http.ResponseWriter, r *http.Request) {
 		panic(error)
 	}	
 	defer db.Close()
+	page := &PageWriter{Title:"Fail to add! Currency Exists in the DB"}
+
+	from := r.FormValue("from")
+	to := r.FormValue("to")
+	p := &AddCurrPage{fromIn: from, toIn: to}
+	if p.save() {
+		page.Title = fmt.Sprintf("Successfully added Currency %s -> %s",from,to)
+	} 
+
 	data, error := db.Query("SELECT * FROM Currency")
 	if error != nil {
 		log.Fatal(error)
@@ -202,16 +211,7 @@ func addCurrReactHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		placeHold.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", from,to))
 	}
-	page := &PageWriter{Data:template.HTML(placeHold.String())}
-
-	from := r.FormValue("from")
-	to := r.FormValue("to")
-	p := &AddCurrPage{fromIn: from, toIn: to}
-	if p.save() {
-		page.Title = fmt.Sprintf("Successfully added Currency %s -> %s",from,to)
-	} else {
-		page.Title = "Fail to add! Currency Exists in the DB"
-	}
+	page.Data = template.HTML(placeHold.String())
 	t, _ := template.ParseFiles("addCurrReact.html")
     t.Execute(w, page)
 }
