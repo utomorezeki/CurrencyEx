@@ -1,16 +1,17 @@
-<h1>Exchange Rate for {{.Title}}</h1>
+<h1>{{.Title}}</h1>
+<h1>Average {{.Average}}</h1>
+<h1>Variance {{.Variance}}</h1>
 <table>
     <tr>
-        <td>From</td>
-        <td>To</td>
+        <td>Date</td>
         <td>Rate</td>
-        <td>7-day avg</td>
     </tr>{{.Data}}
 </table>
-
 <ul>
     <li><a href="/addCurr/form">Add Currency</a></li>
     <li><a href="/dailyEx/form">Input Rate Data</a></li>
     <li><a href="/dateShow/form">Report by Date</a></li>
     <li><a href="/sevenDays/form">7-Day Data</a></li>
 </ul>
+
+

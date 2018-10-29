@@ -9,6 +9,8 @@ import (
 	"database/sql"
 	"strconv"
 	"time"
+	"bytes"
+	"math"
 )
 
 const shortForm = "2006-01-02"
@@ -21,8 +23,10 @@ type AddCurrPage struct {
 }
 
 type PageWriter struct {
-	title  string
-	data []string
+	Title  string
+	Data template.HTML
+	Average float32
+	Variance float32
 }
 
 func (p *AddCurrPage) save() bool {
@@ -101,13 +105,13 @@ func show() {
 	}
 }
 
-func sevenDay(fromIn string, toIn string, timeIn time.Time, db *sql.DB) (float32,*[]string,*[]float32){
+func sevenDay(fromIn string, toIn string, timeIn time.Time, db *sql.DB) (float32,float32,*map[string]float32){
 	var (
-		sevenD []string
-		sevenR []float32
+		sevenDR map[string]float32 = make(map[string]float32)
 		avg float32 = 0
+		max float32 = 0
+		min float32 = math.MaxFloat32
 	)
-	fmt.Println("INSIDE SEVENDAY")
 	for i := -3; i < 4; i++ {
 		timeCur := timeIn.AddDate(0,0,i).String()[:10]
 		dataQuery := fmt.Sprintf("SELECT * FROM ExcData WHERE Date='%s' AND FromC='%s' AND ToC='%s'",timeCur, fromIn,toIn)
@@ -126,16 +130,20 @@ func sevenDay(fromIn string, toIn string, timeIn time.Time, db *sql.DB) (float32
 			if err := data.Scan(&from, &to,&date, &rate); err != nil {
 				log.Fatal(err)
 			}
-			sevenD = append(sevenD, date)
-			sevenR = append(sevenR, rate)
-			fmt.Printf("DATE %s RATE %f \n", date,rate)
+			sevenDR[date] = rate
 		}
 	}
-	for _, dataEl := range sevenR {
-		avg = avg + dataEl
+	for _, rateVal := range sevenDR {
+		avg = avg + rateVal
+		if rateVal > max { 
+			max = rateVal
+		}
+		if rateVal < min {
+			min = rateVal
+		}
 	}
-	avg = avg / float32(len(sevenR))
-	return avg,&sevenD,&sevenR
+	avg = avg / float32(len(sevenDR))
+	return avg,max - min,&sevenDR
 }
 
 func addCurrHandler(w http.ResponseWriter, r *http.Request) {
@@ -185,8 +193,6 @@ func dateShowReactHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, fmt.Sprintf("error", err))
 		return
 	} 
-	//THIS LINE IS A PLACEHOLDER
-	fmt.Printf(parsedTime.String()[:10])
 
 	db, error := sql.Open("mysql","root:pass@tcp(sql1:3306)/CurrencyConv")
 	if error != nil {
@@ -200,7 +206,7 @@ func dateShowReactHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(error)
 	}
 	defer data.Close()
-	var placeHold []string
+	var placeHold bytes.Buffer
 	for data.Next() {
 		var (
 			from   string
@@ -212,11 +218,11 @@ func dateShowReactHandler(w http.ResponseWriter, r *http.Request) {
 		if err := data.Scan(&from, &to,&date, &rate); err != nil {
 			log.Fatal(err)
 		}
-		placeHold = append(placeHold,fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%f</td><td></td></tr>", from, to,rate))
 		avg,_,_ = sevenDay(from,to,parsedTime,db)
-		fmt.Printf("FROM %s TO %s RATE %f AVG-7DAY %f \n", from, to,rate,avg)
+		placeHold.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%f</td><td>%f</td></tr>", from, to,rate,avg))
 	}
-	page := &PageWriter{date, placeHold}
+	page := &PageWriter{Title: date, Data:template.HTML(placeHold.String())}
+	
 	t, _ := template.ParseFiles("dateShowReact.html")
 	t.Execute(w, page)
 	
@@ -236,15 +242,21 @@ func sevenDaysReactHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, fmt.Sprintf("error", err))
 		return
 	} 
-	//THIS LINE IS A PLACEHOLDER
-	fmt.Printf(parsedTime.String()[:10])
 
 	db, error := sql.Open("mysql","root:pass@tcp(sql1:3306)/CurrencyConv")
 	if error != nil {
 		panic(error)
 	}	
 	defer db.Close()
-	sevenDay(from,to, parsedTime,db)
+	avg,varia,sevenDR := sevenDay(from,to, parsedTime,db)
+
+	var placeHold bytes.Buffer
+	for dateKey, rateVal := range *sevenDR {
+		placeHold.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%f</td></tr>", dateKey,rateVal))
+	}
+	page := &PageWriter{Title: fmt.Sprintf("From %s --> To %s",from,to), Data:template.HTML(placeHold.String()),Average: avg,Variance:varia}
+	t, _ := template.ParseFiles("sevenDaysReact.html")
+	t.Execute(w, page)
 }
 
 func main() {
@@ -256,6 +268,5 @@ func main() {
 	http.HandleFunc("/dateShow/react", dateShowReactHandler)
 	http.HandleFunc("/sevenDays/form", sevenDaysHandler)
 	http.HandleFunc("/sevenDays/react", sevenDaysReactHandler)
-    //http.HandleFunc("/save/", saveHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
