@@ -21,9 +21,17 @@ services:
       - my-net
     depends_on:
       - sqldb
-    command: >
-      /bin/bash -c "
-        sleep 5;
-      "
+
+  goweb:
+    build: ./goweb
+    ports:
+      - 8080:8080
+    networks:
+      - my-net
+    depends_on:
+      - sqlinitiate
+    command: ["./wait-for-it.sh", "localhost:8080", "-s", "docker", "run", "-p", "8080:8080", "--network=my-net", "./goweb"]
+    
+
 
 
